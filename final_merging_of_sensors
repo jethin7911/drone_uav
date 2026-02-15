@@ -1,0 +1,66 @@
+import pandas as pd
+import glob
+import os
+
+def merge_datasets_dynamically(input_dir='.', output_file='master_uav_dataset.csv'):
+    """
+    Finds all CSVs, maps binary fault columns to a single fault_id,
+    and merges them into one master file.
+    """
+    
+    # 1. Define the mapping of columns to IDs
+    # These match the headers found in your flight logs
+    fault_mapping = {
+        'accel_fault': 1,
+        'baro_fault': 2,
+        'gps_fault': 3,
+        'gyro_fault': 4,
+        'mag_fault': 5
+    }
+
+    # 2. Find all CSV files in the directory
+    # Recursively looks in subfolders if you use '**/*.csv'
+    all_files = glob.glob(os.path.join(input_dir, "*.csv"))
+    
+    # Remove the output file from the list if it already exists
+    all_files = [f for f in all_files if os.path.basename(f) != output_file]
+
+    if not all_files:
+        print("No CSV files found in the directory.")
+        return
+
+    all_dfs = []
+    print(f"Found {len(all_files)} files. Processing...")
+
+    for file_path in all_files:
+        print(f"  Reading: {os.path.basename(file_path)}")
+        df = pd.read_csv(file_path)
+
+        # 3. Create the unified 'fault_id' column
+        # Start by assuming everything is 0 (Healthy)
+        df['fault_id'] = 0
+
+        # Check each fault column and assign the corresponding ID
+        for col_name, fault_id in fault_mapping.items():
+            if col_name in df.columns:
+                # If the specific fault column has a '1', assign the fault_id
+                df.loc[df[col_name] == 1, 'fault_id'] = fault_id
+
+        all_dfs.append(df)
+
+    # 4. Merge all dataframes together
+    master_df = pd.concat(all_dfs, ignore_index=True)
+
+    # 5. Save the final file
+    master_df.to_csv(output_file, index=False)
+    
+    print("-" * 30)
+    print(f"Successfully created: {output_file}")
+    print("Fault ID Distribution:")
+    print(master_df['fault_id'].value_counts().sort_index().rename({
+        0: 'Healthy', 1: 'Accel', 2: 'Baro', 3: 'GPS', 4: 'Gyro', 5: 'Mag'
+    }))
+
+# To use this, just call the function. 
+# You can change '.' to your folder path if needed.
+merge_datasets_dynamically(input_dir='.')
