@@ -1,0 +1,45 @@
+import pandas as pd
+import glob
+import os
+
+def merge_all_labeled_flights(file_pattern='*.csv', output_name='master_uav_dataset.csv'):
+    """
+    Finds all matching CSV files and stacks them, assigning a flight_id column
+    based on the order they are processed (1, 2, 3,..etc).
+    """
+    # Find all matching labeled files
+    file_list = glob.glob(file_pattern)
+    
+    if not file_list:
+        print(f"No files found matching pattern: {file_pattern}")
+        return
+
+    # Sort the list alphabetically to ensure consistency across different OS runs
+    file_list.sort()
+
+    all_dataframes = []
+    print(f"Found {len(file_list)} flights to merge.")
+
+    # Process each file with a simple counter (start=1)
+    for flight_id, file_path in enumerate(file_list, start=1):
+        print(f"Reading: {os.path.basename(file_path)} as Flight ID: {flight_id}")
+        
+        df = pd.read_csv(file_path)
+        
+    #  Assign the ID based on the loop sequence
+        df['flight_id'] = flight_id
+        all_dataframes.append(df)
+
+    # Concatenate all data into one DataFrame
+    master_df = pd.concat(all_dataframes, ignore_index=True)
+    
+    # Save the final master dataset
+    master_df.to_csv(output_name, index=False)
+    
+    print("-" * 30)
+    print(f"Master dataset created: {output_name}")
+    print(f"Total rows: {len(master_df)}")
+    print(f"Flight IDs generated: 1 through {len(file_list)}")
+
+# Run the merge
+merge_all_labeled_flights()
